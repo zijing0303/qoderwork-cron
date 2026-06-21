@@ -23,13 +23,60 @@ CITY_MAP = {
 
 
 def get_weather(city_cn="上海"):
-    """从 wttr.in 获取天气数据"""
+    """从 wttr.in 获取天气数据（中文）"""
     city_en = CITY_MAP.get(city_cn, city_cn)
-    url = f"https://wttr.in/{city_en}?format=j1"
-    req = urllib.request.Request(url, headers={"User-Agent": "curl/7.88"})
+    url = f"https://wttr.in/{city_en}?format=j1&lang=zh"
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "curl/7.88",
+        "Accept-Language": "zh-CN,zh;q=0.9",
+    })
     with urllib.request.urlopen(req, timeout=15) as resp:
         data = json.loads(resp.read().decode("utf-8"))
     return data
+
+
+# 风向英文→中文映射
+WIND_DIR_CN = {
+    "N": "北风", "NNE": "北东北风", "NE": "东北风", "ENE": "东东北风",
+    "E": "东风", "ESE": "东东南风", "SE": "东南风", "SSE": "南东南风",
+    "S": "南风", "SSW": "南西南风", "SW": "西南风", "WSW": "西西南风",
+    "W": "西风", "WNW": "西西北风", "NW": "西北风", "NNW": "北西北风",
+}
+
+# wttr.in 天气描述英文→中文映射
+WEATHER_DESC_CN = {
+    "sunny": "晴", "clear": "晴",
+    "partly cloudy": "多云", "partlycloudy": "多云",
+    "cloudy": "多云",
+    "overcast": "阴",
+    "mist": "薄雾", "fog": "雾", "freezing fog": "冻雾",
+    "patchy rain possible": "局部可能有雨", "patchy rain nearby": "局部有雨",
+    "patchy snow possible": "局部可能有雪", "patchy sleet possible": "局部可能有雨夹雪",
+    "thundery outbreaks possible": "可能有雷阵雨",
+    "blowing snow": "风吹雪", "blizzard": "暴风雪",
+    "light drizzle": "小毛毛雨", "patchy light drizzle": "局部小毛毛雨",
+    "freezing drizzle": "冻毛毛雨", "heavy freezing drizzle": "强冻毛毛雨",
+    "patchy light rain": "局部小雨", "light rain": "小雨", "light rain shower": "小阵雨",
+    "moderate rain at times": "时有中雨", "moderate rain": "中雨",
+    "heavy rain at times": "时有大雨", "heavy rain": "大雨",
+    "light freezing rain": "小冻雨", "moderate or heavy freezing rain": "中到大冻雨",
+    "light sleet": "小雨夹雪", "moderate or heavy sleet": "中到大雨夹雪",
+    "patchy light snow": "局部小雪", "light snow": "小雪", "light snow showers": "小阵雪",
+    "patchy moderate snow": "局部中雪", "moderate snow": "中雪",
+    "patchy heavy snow": "局部大雪", "heavy snow": "大雪",
+    "ice pellets": "冰粒",
+    "light rain shower": "小阵雨", "moderate or heavy rain shower": "中到大阵雨",
+    "torrential rain shower": "暴雨",
+    "light sleet showers": "小雨夹雪阵雨", "moderate or heavy sleet showers": "中到大雨夹雪阵雨",
+    "light snow showers": "小阵雪", "moderate or heavy snow showers": "中到大阵雪",
+    "patchy light snow showers": "局部小阵雪",
+}
+
+
+def translate_weather(desc_en):
+    """将 wttr.in 英文天气描述翻译为中文"""
+    key = desc_en.strip().lower()
+    return WEATHER_DESC_CN.get(key, desc_en)
 
 
 def format_weather(data, city_cn="上海"):
@@ -41,15 +88,17 @@ def format_weather(data, city_cn="上海"):
     temp = current["temp_C"]
     feels = current["FeelsLikeC"]
     humidity = current["humidity"]
-    desc = current["lang_zh"][0]["value"] if current.get("lang_zh") else current["weatherDesc"][0]["value"]
+    raw_desc = current["weatherDesc"][0]["value"]
+    desc = translate_weather(raw_desc)
     wind_speed = current["windspeedKmph"]
-    wind_dir = current["winddir16Point"]
+    wind_dir_en = current["winddir16Point"]
+    wind_dir = WIND_DIR_CN.get(wind_dir_en, wind_dir_en)
 
     lines = [
         f"**{city_cn}今日天气**",
         f"当前：{desc}，{temp}°C（体感 {feels}°C）",
         f"温度范围：{today['mintempC']}°C ~ {today['maxtempC']}°C",
-        f"湿度：{humidity}% 风力：{wind_dir} {wind_speed}km/h",
+        f"湿度：{humidity}% {wind_dir} {wind_speed}km/h",
         "",
     ]
 
@@ -63,8 +112,8 @@ def format_weather(data, city_cn="上海"):
     if tomorrow:
         tmr_desc = ""
         for h in tomorrow.get("hourly", []):
-            if h.get("lang_zh"):
-                tmr_desc = h["lang_zh"][0]["value"]
+            if h.get("weatherDesc"):
+                tmr_desc = translate_weather(h["weatherDesc"][0]["value"])
                 break
         lines.append(f"**明日预报**")
         if tmr_desc:
