@@ -1,0 +1,36 @@
+name: 工作日外卖提醒
+on:
+  schedule:
+    # 每天10:30 CST (UTC+8) = 02:30 UTC
+    # 脚本内部判断是否为工作日，非工作日不发送
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: pip install chinese_calendar
+
+      - name: Check workday & send reminder
+        env:
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          FEISHU_WEBHOOK_SECRET: ${{ secrets.FEISHU_WEBHOOK_SECRET }}
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, 'scripts')
+          from check_workday import check_workday
+          from feishu_push import send_text
+
+          is_wd, reason = check_workday()
+          print(reason)
+
+          if is_wd:
+              result = send_text('该点外卖啦！别忘了好好吃饭~')
+              print(result)
+          else:
+              print('非工作日，跳过推送')
+          "

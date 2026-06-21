@@ -1,0 +1,24 @@
+name: 催还款提醒-谦润
+on:
+  schedule:
+    # 每月12号中午12:00 (CST = UTC+8, so 04:00 UTC)
+    - cron: '0 4 12 * *'
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Send reminder
+        env:
+          FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          FEISHU_WEBHOOK_SECRET: ${{ secrets.FEISHU_WEBHOOK_SECRET }}
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, 'scripts')
+          from feishu_push import send_text
+          result = send_text('今天是每月12号，提醒：向谦润催还款。')
+          print(result)
+          "
