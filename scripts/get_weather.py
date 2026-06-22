@@ -65,7 +65,8 @@ WEATHER_DESC_CN = {
     "patchy moderate snow": "局部中雪", "moderate snow": "中雪",
     "patchy heavy snow": "局部大雪", "heavy snow": "大雪",
     "ice pellets": "冰粒",
-    "light rain shower": "小阵雨", "moderate or heavy rain shower": "中到大阵雨",
+    "light rain shower": "小阵雨", "heavy rain shower": "大阵雨",
+    "moderate or heavy rain shower": "中到大阵雨",
     "torrential rain shower": "暴雨",
     "light sleet showers": "小雨夹雪阵雨", "moderate or heavy sleet showers": "中到大雨夹雪阵雨",
     "light snow showers": "小阵雪", "moderate or heavy snow showers": "中到大阵雪",
@@ -74,7 +75,16 @@ WEATHER_DESC_CN = {
 
 
 def translate_weather(desc_en):
-    """将 wttr.in 英文天气描述翻译为中文"""
+    """将 wttr.in 英文天气描述翻译为中文，支持逗号分隔的复合描述"""
+    if "," in desc_en:
+        parts = [translate_weather(p.strip()) for p in desc_en.split(",")]
+        seen = set()
+        unique = []
+        for p in parts:
+            if p not in seen:
+                seen.add(p)
+                unique.append(p)
+        return "、".join(unique)
     key = desc_en.strip().lower()
     return WEATHER_DESC_CN.get(key, desc_en)
 
